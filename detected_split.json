@@ -1,0 +1,195 @@
+{
+  "detected_split": {
+    "Chest and Triceps": [
+      "Bench Press (Barbell)",
+      "Chest Fly",
+      "Incline Bench Press (Dumbbell)",
+      "L Sit",
+      "Skullcrusher (Barbell)",
+      "Triceps Pushdown (Cable - Straight Bar)"
+    ],
+    "Morning Workout": [
+      "Bent Over Row (Barbell)",
+      "Bicep Curl (Dumbbell)",
+      "Hammer Curl (Dumbbell)",
+      "Iso-Lateral Row (Machine)",
+      "L Sit",
+      "Pull Up"
+    ],
+    "Legs": [
+      "Bulgarian Split Squat",
+      "Leg Extension (Machine)",
+      "Romanian Deadlift (Barbell)",
+      "Squat (Barbell)"
+    ],
+    "Midday Workout": [
+      "Bent Over Row (Barbell)",
+      "Bicep Curl (Dumbbell)",
+      "Front Raise (Dumbbell)",
+      "Hammer Curl (Dumbbell)",
+      "Iso-Lateral Row (Machine)",
+      "L Sit",
+      "Lat Pulldown (Cable)",
+      "Lateral Raise (Dumbbell)",
+      "Pull Up",
+      "Reverse Fly (Dumbbell)",
+      "Seated Overhead Press (Dumbbell)"
+    ],
+    "Lower (squat strength)": [
+      "Bulgarian Split Squat",
+      "Lying Leg Curl (Machine)",
+      "Romanian Deadlift (Barbell)",
+      "Seated Leg Curl (Machine)",
+      "Squat (Barbell)"
+    ],
+    "Upper Push": [
+      "Bench Press (Barbell)",
+      "Chest Dip",
+      "Incline Bench Press (Dumbbell)",
+      "Lateral Raise (Dumbbell)",
+      "Seated Overhead Press (Dumbbell)",
+      "Skullcrusher (Barbell)",
+      "Triceps Pushdown (Cable - Straight Bar)"
+    ],
+    "Upper Pull": [
+      "Bent Over Row (Barbell)",
+      "Face Pull (Cable)",
+      "Hammer Curl (Dumbbell)",
+      "Hanging Leg Raise",
+      "Incline Curl (Dumbbell)",
+      "L Sit",
+      "Lat Pulldown (Cable)",
+      "Pull Up",
+      "Reverse Curl (Barbell)",
+      "Reverse Fly (Machine)"
+    ],
+    "Lower ( Hypertrophy)": [
+      "Bulgarian Split Squat",
+      "Romanian Deadlift (Barbell)",
+      "Seated Leg Curl (Machine)",
+      "Squat (Barbell)"
+    ]
+  },
+  "top_exercises": [
+    {
+      "Exercise Name": "Bench Press (Barbell)",
+      "max_weight": 225.0,
+      "estimated_1rm": 247.50000000000003,
+      "times_performed": 86
+    },
+    {
+      "Exercise Name": "Squat (Barbell)",
+      "max_weight": 300.0,
+      "estimated_1rm": 330.0,
+      "times_performed": 72
+    },
+    {
+      "Exercise Name": "Pull Up",
+      "max_weight": 75.0,
+      "estimated_1rm": 85.0,
+      "times_performed": 44
+    },
+    {
+      "Exercise Name": "Incline Bench Press (Dumbbell)",
+      "max_weight": 85.0,
+      "estimated_1rm": 110.5,
+      "times_performed": 42
+    },
+    {
+      "Exercise Name": "Bent Over Row (Barbell)",
+      "max_weight": 175.0,
+      "estimated_1rm": 221.66666666666666,
+      "times_performed": 30
+    },
+    {
+      "Exercise Name": "Romanian Deadlift (Barbell)",
+      "max_weight": 255.0,
+      "estimated_1rm": 323.0,
+      "times_performed": 28
+    },
+    {
+      "Exercise Name": "Triceps Pushdown (Cable - Straight Bar)",
+      "max_weight": 95.0,
+      "estimated_1rm": 117.0,
+      "times_performed": 27
+    },
+    {
+      "Exercise Name": "Seated Overhead Press (Dumbbell)",
+      "max_weight": 75.0,
+      "estimated_1rm": 85.0,
+      "times_performed": 23
+    },
+    {
+      "Exercise Name": "Hammer Curl (Dumbbell)",
+      "max_weight": 35.0,
+      "estimated_1rm": 49.0,
+      "times_performed": 21
+    },
+    {
+      "Exercise Name": "Lateral Raise (Dumbbell)",
+      "max_weight": 25.0,
+      "estimated_1rm": 31.666666666666664,
+      "times_performed": 19
+    },
+    {
+      "Exercise Name": "Incline Curl (Dumbbell)",
+      "max_weight": 45.0,
+      "estimated_1rm": 52.5,
+      "times_performed": 17
+    },
+    {
+      "Exercise Name": "Bulgarian Split Squat",
+      "max_weight": 65.0,
+      "estimated_1rm": 86.66666666666666,
+      "times_performed": 16
+    },
+    {
+      "Exercise Name": "Lat Pulldown (Cable)",
+      "max_weight": 160.0,
+      "estimated_1rm": 210.0,
+      "times_performed": 12
+    },
+    {
+      "Exercise Name": "Skullcrusher (Barbell)",
+      "max_weight": 70.0,
+      "estimated_1rm": 81.66666666666667,
+      "times_performed": 10
+    },
+    {
+      "Exercise Name": "Bicep Curl (Dumbbell)",
+      "max_weight": 45.0,
+      "estimated_1rm": 54.0,
+      "times_performed": 9
+    },
+    {
+      "Exercise Name": "Chest Fly",
+      "max_weight": 30.0,
+      "estimated_1rm": 38.0,
+      "times_performed": 6
+    },
+    {
+      "Exercise Name": "Seated Leg Curl (Machine)",
+      "max_weight": 200.0,
+      "estimated_1rm": 280.0,
+      "times_performed": 6
+    },
+    {
+      "Exercise Name": "Iso-Lateral Row (Machine)",
+      "max_weight": 150.0,
+      "estimated_1rm": 195.0,
+      "times_performed": 6
+    },
+    {
+      "Exercise Name": "Front Raise (Dumbbell)",
+      "max_weight": 15.0,
+      "estimated_1rm": 19.0,
+      "times_performed": 2
+    },
+    {
+      "Exercise Name": "Face Pull (Cable)",
+      "max_weight": 20.0,
+      "estimated_1rm": 26.0,
+      "times_performed": 2
+    }
+  ]
+}
