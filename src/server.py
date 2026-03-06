@@ -165,6 +165,15 @@ def detect_phase(fitness, fatigue):
 def root():
     return {"status": "ok", "message": "Atlas API is running"}
 
+@app.get("/debug/env")
+def debug_env():
+    key = os.environ.get("ANTHROPIC_API_KEY", "")
+    return {
+        "has_key": bool(key),
+        "key_prefix": key[:12] + "..." if len(key) > 12 else "EMPTY",
+        "key_length": len(key)
+    }
+
 @app.get("/debug")
 def debug():
     try:
