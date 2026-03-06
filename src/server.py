@@ -388,7 +388,12 @@ Respond ONLY with valid JSON, no other text:
                     "messages": [{"role": "user", "content": prompt}]
                 }
             )
+        print(f"Anthropic status: {response.status_code}")
+        raw = response.text
+        print(f"Anthropic response: {raw[:500]}")
         data = response.json()
+        if "error" in data:
+            return {"error": f"Anthropic error: {data['error'].get('message', str(data['error']))}"}
         text = "".join(b.get("text", "") for b in data.get("content", []))
         clean = text.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
         result = json.loads(clean)
