@@ -458,6 +458,7 @@ Respond ONLY with JSON: {{"next_set": "your instruction", "next_weight": 225, "n
 
 
 
+class PrescriptionRequest(BaseModel):
     exercises: list
     readiness: float
     soreness:  dict
