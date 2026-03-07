@@ -1162,7 +1162,12 @@ function History() {
   };
 
   const formatVol = (v) => v ? (v / 1000).toFixed(1) + 'K' : '—';
-  const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const formatDate = (d) => {
+    if (!d) return "—";
+    // Add T00:00:00 to prevent timezone offset shifting the date
+    const dt = new Date(d + "T00:00:00");
+    return dt.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  };
 
   // Exercise progress chart (simple SVG)
   const ProgressChart = ({ data }) => {
@@ -1364,18 +1369,21 @@ export default function App() {
 
   useEffect(() => { loadData(); }, []);
 
+  const [today, setToday] = useState(() => new Date().toLocaleDateString('en-US', {
+    weekday:'long', month:'long', day:'numeric', year:'numeric'
+  }));
+
   const handleNewDay = () => {
     setCheckin(null);
     setWorkout(null);
     setExes([]);
     setView("dashboard");
     setLoadingCheckin(true);
+    setToday(new Date().toLocaleDateString('en-US', {
+      weekday:'long', month:'long', day:'numeric', year:'numeric'
+    }));
     loadData();
   };
-
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday:'long', month:'long', day:'numeric', year:'numeric'
-  });
 
   const handleCheckin = (data) => { setCheckin(data); setView("workout"); };
   const handleWorkout = (name, exs) => { setWorkout(name); setExes(exs); setView("prescription"); };
