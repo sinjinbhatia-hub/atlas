@@ -272,11 +272,11 @@ const STYLE = `
   .set-input:focus { border-bottom-color: var(--accent); }
   .set-divider { color: var(--muted); font-size: 12px; }
   .set-feel-btns { display: flex; gap: 4px; margin-left: auto; }
-  .set-feel-btn { font-size: 16px; background: transparent; border: 1px solid var(--border); padding: 4px 8px; cursor: pointer; transition: all 0.1s; }
-  .set-feel-btn:hover { border-color: var(--accent); }
-  .set-feel-btn.selected-easy   { border-color: var(--green);  background: rgba(0,255,135,0.1); }
-  .set-feel-btn.selected-good   { border-color: var(--accent); background: rgba(0,229,255,0.1); }
-  .set-feel-btn.selected-hard   { border-color: var(--red);    background: rgba(255,61,90,0.1); }
+  .set-feel-btn { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 4px 8px; cursor: pointer; transition: all 0.1s; white-space: nowrap; }
+  .set-feel-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .set-feel-btn.selected-easy   { border-color: var(--green);  background: rgba(0,255,135,0.1);  color: var(--green); }
+  .set-feel-btn.selected-good   { border-color: var(--accent); background: rgba(0,229,255,0.1);  color: var(--accent); }
+  .set-feel-btn.selected-hard   { border-color: var(--red);    background: rgba(255,61,90,0.1);   color: var(--red); }
   .set-done-btn { font-family: var(--font-mono); font-size: 10px; padding: 4px 10px; background: transparent; border: 1px solid var(--muted); color: var(--muted); cursor: pointer; white-space: nowrap; }
   .set-done-btn:hover { border-color: var(--green); color: var(--green); }
   .set-done-btn.completed { border-color: var(--green); color: var(--green); background: rgba(0,255,135,0.05); }
@@ -855,7 +855,7 @@ function WorkoutTracker({ workout, prescription, checkin, exercises, onFinish, o
       id:        i,
       weight:    defaultWeight,
       reps:      defaultReps,
-      feel:      null,   // 'easy' | 'good' | 'hard'
+      rir:       undefined,
       done:      false,
       aiSuggest: null,
       loading:   false,
@@ -907,8 +907,16 @@ function WorkoutTracker({ workout, prescription, checkin, exercises, onFinish, o
     setRestSecs(restTime);
     setResting(true);
 
-    // If user rated the set, call AI adapt
-    if (set.feel && set.weight && set.reps) {
+    // RIR-based adaptation
+    const rir = set.rir;
+    if (rir === 1 || rir === 2 || rir === undefined) {
+      // Perfect — 1-2 RIR is the target zone, carry weight forward silently
+      if (setIdx + 1 < ex.sets.length) {
+        updateSet(exIdx, setIdx + 1, 'weight', set.weight);
+        updateSet(exIdx, setIdx + 1, 'reps',   set.reps);
+      }
+    } else if (set.weight && set.reps) {
+      // RIR 0 (failure) or 3+ (too light) — call AI for smart adjustment
       updateSet(exIdx, setIdx, 'loading', true);
       try {
         const baseEx = exercises.find(e => e.name === ex.name) || {};
@@ -921,15 +929,18 @@ function WorkoutTracker({ workout, prescription, checkin, exercises, onFinish, o
             prescribed_reps:   parseInt(ex.reps)   || 0,
             actual_weight:     parseFloat(set.weight),
             actual_reps:       parseInt(set.reps),
-            feeling:           set.feel,
+            feeling:           rir === 0 ? "too_hard" : "easy",
+            rir:               rir,
             readiness,
             one_rm:            baseEx.oneRM || 0,
+            set_number:        setIdx + 1,
+            total_sets:        ex.sets.length,
+            exercise_type:     ex.type || "compound",
           })
         });
         const data = await res.json();
         if (!data.error) {
           updateSet(exIdx, setIdx, 'aiSuggest', data.next_set);
-          // Pre-fill next set with AI suggestion
           if (setIdx + 1 < ex.sets.length) {
             if (data.next_weight) updateSet(exIdx, setIdx + 1, 'weight', data.next_weight);
             if (data.next_reps)   updateSet(exIdx, setIdx + 1, 'reps',   data.next_reps);
@@ -1013,15 +1024,25 @@ function WorkoutTracker({ workout, prescription, checkin, exercises, onFinish, o
                       <input className="set-input" type="number" placeholder="reps"
                         value={set.reps}
                         onChange={e => updateSet(exIdx, setIdx, 'reps', e.target.value)} />
-                      <div className="set-feel-btns">
-                        {[["😤","easy"],["✓","good"],["😮‍💨","hard"]].map(([emoji, feel]) => (
-                          <button key={feel}
-                            className={`set-feel-btn ${set.feel === feel ? `selected-${feel}` : ''}`}
-                            onClick={() => updateSet(exIdx, setIdx, 'feel', feel)}
-                            title={feel}>
-                            {emoji}
-                          </button>
-                        ))}
+                      <div style={{marginLeft:"auto", display:"flex", alignItems:"center", gap:"6px", flexShrink:0}}>
+                        <div style={{fontFamily:"var(--font-mono)", fontSize:"9px", color:"var(--muted)", letterSpacing:"1px", whiteSpace:"nowrap"}}>RIR</div>
+                        {[0,1,2,3,"4+"].map(r => {
+                          const val = r === "4+" ? 4 : r;
+                          const selected = set.rir === val;
+                          const color = val === 0 ? "var(--red)" : val <= 2 ? "var(--accent)" : "var(--green)";
+                          return (
+                            <button key={r}
+                              onClick={() => updateSet(exIdx, setIdx, 'rir', val)}
+                              style={{
+                                fontFamily:"var(--font-mono)", fontSize:"11px", fontWeight:600,
+                                width:"28px", height:"28px", border:`1px solid ${selected ? color : "var(--border)"}`,
+                                background: selected ? `${color}22` : "transparent",
+                                color: selected ? color : "var(--muted)", cursor:"pointer"
+                              }}>
+                              {r}
+                            </button>
+                          );
+                        })}
                       </div>
                       <button
                         className={`set-done-btn ${set.done ? 'completed' : ''}`}
@@ -1030,6 +1051,11 @@ function WorkoutTracker({ workout, prescription, checkin, exercises, onFinish, o
                         {set.loading ? "AI..." : set.done ? "✓" : "Done"}
                       </button>
                     </div>
+                    {set.done && !set.aiSuggest && set.rir !== undefined && set.rir !== 1 && set.rir !== 2 && (
+                      <div style={{padding:"6px 12px", fontFamily:"var(--font-mono)", fontSize:"10px", color:"var(--muted)"}}>
+                        {set.rir === 0 ? "Hit failure — AI adjusting..." : set.rir >= 4 ? "Lots left in tank — AI adjusting..." : null}
+                      </div>
+                    )}
                     {set.aiSuggest && (
                       <div className="ai-adapt-box">
                         <div className="ai-adapt-label">⬡ AI Adapt</div>
