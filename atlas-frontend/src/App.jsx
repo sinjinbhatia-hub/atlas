@@ -1124,6 +1124,224 @@ function WorkoutTracker({ workout, prescription, checkin, exercises, onFinish, o
   );
 }
 
+// ── History ──────────────────────────────────────────────────────────────────
+function History() {
+  const [sessions, setSessions]         = useState([]);
+  const [total, setTotal]               = useState(0);
+  const [offset, setOffset]             = useState(0);
+  const [selected, setSelected]         = useState(null);
+  const [detail, setDetail]             = useState(null);
+  const [exerciseView, setExerciseView] = useState(null);
+  const [exHistory, setExHistory]       = useState(null);
+  const [loading, setLoading]           = useState(true);
+  const [searchEx, setSearchEx]         = useState("");
+  const LIMIT = 20;
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`${API}/history/sessions?limit=${LIMIT}&offset=${offset}`)
+      .then(r => r.json())
+      .then(data => { setSessions(data.sessions); setTotal(data.total); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [offset]);
+
+  const openSession = (s) => {
+    setSelected(s);
+    setDetail(null);
+    fetch(`${API}/history/session/${s.date}`)
+      .then(r => r.json())
+      .then(setDetail);
+  };
+
+  const openExercise = (name) => {
+    setExerciseView(name);
+    setExHistory(null);
+    fetch(`${API}/history/exercise/${encodeURIComponent(name)}`)
+      .then(r => r.json())
+      .then(setExHistory);
+  };
+
+  const formatVol = (v) => v ? (v / 1000).toFixed(1) + 'K' : '—';
+  const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+
+  // Exercise progress chart (simple SVG)
+  const ProgressChart = ({ data }) => {
+    if (!data || data.length < 2) return <div className="loading">NOT ENOUGH DATA</div>;
+    const vals  = data.map(d => parseFloat(d.estimated_1rm));
+    const dates = data.map(d => d.date);
+    const min   = Math.min(...vals) * 0.95;
+    const max   = Math.max(...vals) * 1.02;
+    const W = 600, H = 120;
+    const x = (i) => (i / (vals.length - 1)) * W;
+    const y = (v) => H - ((v - min) / (max - min)) * H;
+    const points = vals.map((v, i) => `${x(i)},${y(v)}`).join(" ");
+    const first = formatDate(dates[0]);
+    const last  = formatDate(dates[dates.length - 1]);
+    const peak  = Math.max(...vals).toFixed(1);
+
+    return (
+      <div style={{background:"var(--bg3)", border:"1px solid var(--border)", padding:"16px", marginBottom:"16px"}}>
+        <div style={{display:"flex", justifyContent:"space-between", marginBottom:"8px"}}>
+          <div style={{fontFamily:"var(--font-mono)", fontSize:"9px", color:"var(--muted)", letterSpacing:"2px"}}>EST. 1RM PROGRESSION</div>
+          <div style={{fontFamily:"var(--font-display)", fontSize:"18px", fontWeight:700, color:"var(--accent)"}}>
+            {peak}<span style={{fontSize:"11px", color:"var(--muted)", marginLeft:"4px"}}>lbs peak</span>
+          </div>
+        </div>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%", height:"80px"}}>
+          <polyline points={points} fill="none" stroke="var(--accent)" strokeWidth="2" />
+          {vals.map((v, i) => (
+            <circle key={i} cx={x(i)} cy={y(v)} r="3" fill="var(--accent)" opacity="0.7" />
+          ))}
+        </svg>
+        <div style={{display:"flex", justifyContent:"space-between", fontFamily:"var(--font-mono)", fontSize:"9px", color:"var(--muted)", marginTop:"4px"}}>
+          <span>{first}</span><span>{last}</span>
+        </div>
+      </div>
+    );
+  };
+
+  // Exercise history view
+  if (exerciseView) {
+    return (
+      <div>
+        <button className="btn btn-secondary" style={{marginBottom:"20px", padding:"8px 16px", fontSize:"11px"}}
+          onClick={() => { setExerciseView(null); setExHistory(null); }}>
+          ← Back
+        </button>
+        <div className="section-title">{exerciseView}</div>
+        {!exHistory && <div className="loading">LOADING...</div>}
+        {exHistory && (
+          <>
+            <ProgressChart data={exHistory.history} />
+            <div style={{display:"flex", flexDirection:"column", gap:"6px"}}>
+              {[...exHistory.history].reverse().slice(0,30).map((row, i) => (
+                <div key={i} style={{display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 16px", background:"var(--bg2)", border:"1px solid var(--border)"}}>
+                  <div style={{fontFamily:"var(--font-mono)", fontSize:"11px", color:"var(--muted)"}}>{formatDate(row.date)}</div>
+                  <div style={{fontFamily:"var(--font-display)", fontSize:"16px", fontWeight:600, color:"var(--text)"}}>
+                    {row.max_weight}lbs × {row.max_reps}
+                  </div>
+                  <div style={{fontFamily:"var(--font-mono)", fontSize:"11px", color:"var(--accent)"}}>
+                    ~{parseFloat(row.estimated_1rm).toFixed(0)} 1RM
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Session detail view
+  if (selected) {
+    return (
+      <div>
+        <button className="btn btn-secondary" style={{marginBottom:"20px", padding:"8px 16px", fontSize:"11px"}}
+          onClick={() => { setSelected(null); setDetail(null); }}>
+          ← Back
+        </button>
+        <div style={{background:"var(--bg2)", border:"1px solid var(--border)", borderTop:"2px solid var(--accent)", padding:"16px 20px", marginBottom:"20px"}}>
+          <div style={{fontFamily:"var(--font-display)", fontSize:"20px", fontWeight:700, letterSpacing:"2px", color:"var(--accent)"}}>
+            {selected.workout_name || "Workout"}
+          </div>
+          <div style={{fontFamily:"var(--font-mono)", fontSize:"10px", color:"var(--muted)", marginTop:"4px"}}>
+            {formatDate(selected.date)} · {selected.exercise_count} exercises · {selected.total_sets} sets · {formatVol(selected.total_volume)} vol
+          </div>
+        </div>
+        {!detail && <div className="loading">LOADING...</div>}
+        {detail && Object.entries(detail.exercises).map(([name, sets]) => {
+          const best = Math.max(...sets.map(s => parseFloat(s.estimated_1rm))).toFixed(0);
+          return (
+            <div key={name} style={{background:"var(--bg2)", border:"1px solid var(--border)", marginBottom:"8px", overflow:"hidden"}}>
+              <div style={{padding:"12px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", borderBottom:"1px solid var(--border)"}}
+                onClick={() => openExercise(name)}>
+                <div style={{fontFamily:"var(--font-display)", fontSize:"15px", fontWeight:600, letterSpacing:"1px"}}>{name}</div>
+                <div style={{display:"flex", alignItems:"center", gap:"12px"}}>
+                  <div style={{fontFamily:"var(--font-mono)", fontSize:"10px", color:"var(--accent)"}}>~{best} 1RM</div>
+                  <div style={{fontFamily:"var(--font-mono)", fontSize:"9px", color:"var(--muted)"}}>VIEW PROGRESS →</div>
+                </div>
+              </div>
+              <div style={{padding:"8px 16px"}}>
+                {sets.map((s, i) => (
+                  <div key={i} style={{display:"flex", gap:"16px", padding:"4px 0", fontFamily:"var(--font-mono)", fontSize:"12px", borderBottom: i < sets.length-1 ? "1px solid var(--border)" : "none"}}>
+                    <span style={{color:"var(--muted)", minWidth:"40px"}}>SET {s.set_order}</span>
+                    <span style={{color:"var(--text)"}}>{s.weight}lbs × {s.reps}</span>
+                    <span style={{color:"var(--muted)", marginLeft:"auto"}}>~{parseFloat(s.estimated_1rm).toFixed(0)} 1RM</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Session list view
+  return (
+    <div>
+      <div style={{marginBottom:"20px"}}>
+        <input
+          style={{width:"100%", background:"var(--bg2)", border:"1px solid var(--border)", color:"var(--text)", fontFamily:"var(--font-body)", fontSize:"14px", padding:"12px 16px", outline:"none"}}
+          placeholder="Search exercise (e.g. Bench Press)..."
+          value={searchEx}
+          onChange={e => setSearchEx(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && searchEx.trim()) openExercise(searchEx.trim()); }}
+        />
+        {searchEx && (
+          <div style={{fontFamily:"var(--font-mono)", fontSize:"10px", color:"var(--muted)", marginTop:"6px", letterSpacing:"1px"}}>
+            PRESS ENTER TO VIEW PROGRESS FOR "{searchEx.toUpperCase()}"
+          </div>
+        )}
+      </div>
+
+      <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"8px"}}>
+        <div className="section-title" style={{marginBottom:0}}>Session History</div>
+        <div style={{fontFamily:"var(--font-mono)", fontSize:"10px", color:"var(--muted)"}}>{total} SESSIONS TOTAL</div>
+      </div>
+
+      {loading && <div className="loading">LOADING...</div>}
+
+      {sessions.map((s, i) => (
+        <div key={i} style={{background:"var(--bg2)", border:"1px solid var(--border)", borderLeft:"3px solid transparent", padding:"14px 18px", marginBottom:"6px", cursor:"pointer", transition:"border-color 0.1s"}}
+          onMouseEnter={e => e.currentTarget.style.borderLeftColor = "var(--accent)"}
+          onMouseLeave={e => e.currentTarget.style.borderLeftColor = "transparent"}
+          onClick={() => openSession(s)}>
+          <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+            <div>
+              <div style={{fontFamily:"var(--font-display)", fontSize:"16px", fontWeight:600, letterSpacing:"1px", color:"var(--text)"}}>
+                {s.workout_name || "Workout"}
+              </div>
+              <div style={{fontFamily:"var(--font-mono)", fontSize:"10px", color:"var(--muted)", marginTop:"3px"}}>
+                {formatDate(s.date)}
+              </div>
+            </div>
+            <div style={{display:"flex", gap:"20px", textAlign:"right"}}>
+              <div>
+                <div style={{fontFamily:"var(--font-display)", fontSize:"18px", fontWeight:700, color:"var(--accent)"}}>{s.exercise_count}</div>
+                <div style={{fontFamily:"var(--font-mono)", fontSize:"9px", color:"var(--muted)", letterSpacing:"1px"}}>EXERCISES</div>
+              </div>
+              <div>
+                <div style={{fontFamily:"var(--font-display)", fontSize:"18px", fontWeight:700, color:"var(--text)"}}>{s.total_sets}</div>
+                <div style={{fontFamily:"var(--font-mono)", fontSize:"9px", color:"var(--muted)", letterSpacing:"1px"}}>SETS</div>
+              </div>
+              <div>
+                <div style={{fontFamily:"var(--font-display)", fontSize:"18px", fontWeight:700, color:"var(--muted)"}}>{formatVol(s.total_volume)}</div>
+                <div style={{fontFamily:"var(--font-mono)", fontSize:"9px", color:"var(--muted)", letterSpacing:"1px"}}>VOLUME</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <div style={{display:"flex", gap:"12px", marginTop:"16px"}}>
+        <button className="btn btn-secondary" disabled={offset === 0} onClick={() => setOffset(o => Math.max(0, o - LIMIT))}>← Newer</button>
+        <button className="btn btn-secondary" disabled={offset + LIMIT >= total} onClick={() => setOffset(o => o + LIMIT)}>Older →</button>
+      </div>
+    </div>
+  );
+}
+
 // ── App Shell ────────────────────────────────────────────────────────────────
 export default function App() {
   const [view, setView]                       = useState("dashboard");
@@ -1163,8 +1381,8 @@ export default function App() {
   const handleWorkout = (name, exs) => { setWorkout(name); setExes(exs); setView("prescription"); };
   const handleStartWorkout = (pres) => { setPrescription(pres); setView("train"); };
 
-  const VIEWS  = ["dashboard","checkin","workout","prescription","train"];
-  const LABELS = ["Dashboard","Check-in","Workout","Prescription","Train"];
+  const VIEWS  = ["dashboard","checkin","workout","prescription","train","history"];
+  const LABELS = ["Dashboard","Check-in","Workout","Prescription","Train","History"];
 
   return (
     <>
@@ -1198,6 +1416,7 @@ export default function App() {
         {!loadingCheckin && view === "prescription" && checkin && workout && (
           <Prescription workout={workout} exercises={exercises} checkin={checkin} serverState={serverState} onNewDay={handleNewDay} onStartWorkout={handleStartWorkout} />
         )}
+        {!loadingCheckin && view === "history" && <History />}
         {!loadingCheckin && view === "train" && checkin && workout && prescription && (
           <WorkoutTracker workout={workout} prescription={prescription} checkin={checkin} exercises={exercises} onFinish={() => setView("dashboard")} onNewDay={handleNewDay} />
         )}
