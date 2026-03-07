@@ -537,6 +537,86 @@ def prescribe(req: PrescriptionRequest):
 
     return {"phase": phase, "prescriptions": results}
 
-if __name__ == "__main__":
+@app.get("/history/sessions")
+def get_sessions(limit: int = 30, offset: int = 0):
+    """Get list of workout sessions grouped by date."""
+    try:
+        conn = get_conn()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT 
+                date,
+                workout_name,
+                COUNT(DISTINCT exercise_name) as exercise_count,
+                COUNT(*) as total_sets,
+                SUM(weight * reps) as total_volume,
+                MAX(date) as session_date
+            FROM workouts
+            GROUP BY date, workout_name
+            ORDER BY date DESC
+            LIMIT %s OFFSET %s
+        """, (limit, offset))
+        rows = cur.fetchall()
+        cur.execute("SELECT COUNT(DISTINCT date) as total FROM workouts")
+        total = cur.fetchone()["total"]
+        conn.close()
+        return {"sessions": [dict(r) for r in rows], "total": total}
+    except Exception as e:
+        print(f"DB error in get_sessions: {e}")
+        return {"sessions": [], "total": 0}
+
+@app.get("/history/session/{session_date}")
+def get_session_detail(session_date: str):
+    """Get all sets for a specific session date."""
+    try:
+        conn = get_conn()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT exercise_name, set_order, weight, reps,
+                   weight * (1 + reps / 30.0) as estimated_1rm
+            FROM workouts
+            WHERE date = %s AND weight > 0 AND reps > 0
+            ORDER BY exercise_name, set_order
+        """, (session_date,))
+        rows = cur.fetchall()
+        conn.close()
+        # Group by exercise
+        exercises = {}
+        for r in rows:
+            name = r["exercise_name"]
+            if name not in exercises:
+                exercises[name] = []
+            exercises[name].append(dict(r))
+        return {"date": session_date, "exercises": exercises}
+    except Exception as e:
+        print(f"DB error in get_session_detail: {e}")
+        return {"date": session_date, "exercises": {}}
+
+@app.get("/history/exercise/{exercise_name}")
+def get_exercise_history(exercise_name: str, days: int = 365):
+    """Get 1RM progression for a specific exercise."""
+    try:
+        conn = get_conn()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cutoff = date.today() - timedelta(days=days)
+        cur.execute("""
+            SELECT 
+                date,
+                MAX(weight * (1 + reps / 30.0)) as estimated_1rm,
+                MAX(weight) as max_weight,
+                MAX(reps) as max_reps
+            FROM workouts
+            WHERE exercise_name = %s AND weight > 0 AND reps > 0 AND date >= %s
+            GROUP BY date
+            ORDER BY date ASC
+        """, (exercise_name, cutoff))
+        rows = cur.fetchall()
+        conn.close()
+        return {"exercise": exercise_name, "history": [dict(r) for r in rows]}
+    except Exception as e:
+        print(f"DB error in get_exercise_history: {e}")
+        return {"exercise": exercise_name, "history": []}
+
+
     import uvicorn
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
