@@ -238,7 +238,60 @@ const STYLE = `
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: var(--border); }
+
+  /* ── Mid-workout tracker ── */
+  .workout-tracker { display: flex; flex-direction: column; gap: 16px; }
+
+  .tracker-header { background: var(--bg2); border: 1px solid var(--border); border-top: 2px solid var(--green); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .tracker-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--green); }
+  .tracker-meta { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+
+  .rest-timer { background: var(--bg3); border: 1px solid var(--accent); padding: 20px; text-align: center; margin-bottom: 8px; }
+  .rest-timer-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+  .rest-timer-count { font-family: var(--font-display); font-size: 56px; font-weight: 700; color: var(--accent); line-height: 1; }
+  .rest-timer-bar { height: 3px; background: var(--border); margin-top: 12px; }
+  .rest-timer-fill { height: 3px; background: var(--accent); transition: width 1s linear; }
+
+  .tracker-exercise { background: var(--bg2); border: 1px solid var(--border); overflow: hidden; }
+  .tracker-exercise.active { border-color: var(--accent); }
+  .tracker-exercise.done { border-color: var(--green); opacity: 0.6; }
+
+  .tracker-ex-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+  .tracker-ex-name { font-family: var(--font-display); font-size: 18px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .tracker-exercise.active .tracker-ex-name { color: var(--accent); }
+  .tracker-exercise.done .tracker-ex-name { color: var(--green); }
+  .tracker-ex-prescribed { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .tracker-ex-status { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; }
+  .tracker-exercise.active .tracker-ex-status { color: var(--accent); }
+  .tracker-exercise.done .tracker-ex-status { color: var(--green); }
+
+  .tracker-sets { padding: 0 20px 16px; }
+  .set-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 10px 12px; background: var(--bg3); border: 1px solid var(--border); }
+  .set-num { font-family: var(--font-mono); font-size: 10px; color: var(--muted); min-width: 32px; }
+  .set-input { background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; width: 70px; padding: 2px 4px; outline: none; text-align: center; }
+  .set-input:focus { border-bottom-color: var(--accent); }
+  .set-divider { color: var(--muted); font-size: 12px; }
+  .set-feel-btns { display: flex; gap: 4px; margin-left: auto; }
+  .set-feel-btn { font-size: 16px; background: transparent; border: 1px solid var(--border); padding: 4px 8px; cursor: pointer; transition: all 0.1s; }
+  .set-feel-btn:hover { border-color: var(--accent); }
+  .set-feel-btn.selected-easy   { border-color: var(--green);  background: rgba(0,255,135,0.1); }
+  .set-feel-btn.selected-good   { border-color: var(--accent); background: rgba(0,229,255,0.1); }
+  .set-feel-btn.selected-hard   { border-color: var(--red);    background: rgba(255,61,90,0.1); }
+  .set-done-btn { font-family: var(--font-mono); font-size: 10px; padding: 4px 10px; background: transparent; border: 1px solid var(--muted); color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .set-done-btn:hover { border-color: var(--green); color: var(--green); }
+  .set-done-btn.completed { border-color: var(--green); color: var(--green); background: rgba(0,255,135,0.05); }
+
+  .ai-adapt-box { margin: 8px 0; padding: 10px 14px; background: rgba(123,47,255,0.08); border: 1px solid var(--accent2); font-size: 13px; color: var(--text); }
+  .ai-adapt-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--accent2); text-transform: uppercase; margin-bottom: 4px; }
+
+  .add-set-btn { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; padding: 8px 16px; background: transparent; border: 1px dashed var(--border); color: var(--muted); cursor: pointer; width: 100%; text-align: center; margin-top: 4px; }
+  .add-set-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .session-complete { background: var(--bg2); border: 1px solid var(--green); border-top: 2px solid var(--green); padding: 32px; text-align: center; }
+  .session-complete-title { font-family: var(--font-display); font-size: 32px; font-weight: 700; letter-spacing: 4px; color: var(--green); margin-bottom: 8px; }
+  .session-complete-sub { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 2px; }
 `;
+
 
 const MUSCLES = ["quads","hamstrings","glutes","back","chest","shoulders","biceps","triceps"];
 
@@ -650,7 +703,7 @@ function WorkoutSelect({ checkin, onSelect, serverExercises }) {
 }
 
 // ── Prescription ─────────────────────────────────────────────────────────────
-function Prescription({ workout, exercises, checkin, serverState, onNewDay }) {
+function Prescription({ workout, exercises, checkin, serverState, onNewDay, onStartWorkout }) {
   const [aiResult, setAiResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -750,8 +803,252 @@ function Prescription({ workout, exercises, checkin, serverState, onNewDay }) {
       )}
 
       <div style={{marginTop:"24px", display:"flex", gap:"12px"}}>
+        {aiResult && onStartWorkout && (
+          <button className="btn btn-primary" onClick={() => onStartWorkout(aiResult.exercises)}>
+            Start Workout →
+          </button>
+        )}
         <button className="btn btn-secondary" onClick={onNewDay}>New Day</button>
       </div>
+    </div>
+  );
+}
+
+// ── Rest Timer ───────────────────────────────────────────────────────────────
+function RestTimer({ seconds, onDone }) {
+  const [remaining, setRemaining] = useState(seconds);
+
+  useEffect(() => {
+    if (remaining <= 0) { onDone(); return; }
+    const t = setTimeout(() => setRemaining(r => r - 1), 1000);
+    return () => clearTimeout(t);
+  }, [remaining]);
+
+  const pct = (remaining / seconds) * 100;
+  const mins = Math.floor(remaining / 60);
+  const secs = remaining % 60;
+
+  return (
+    <div className="rest-timer">
+      <div className="rest-timer-label">Rest Timer</div>
+      <div className="rest-timer-count">{mins}:{secs.toString().padStart(2,'0')}</div>
+      <div className="rest-timer-bar">
+        <div className="rest-timer-fill" style={{width: `${pct}%`}} />
+      </div>
+      <button className="btn btn-secondary" style={{marginTop:"12px", padding:"8px 20px", fontSize:"11px"}} onClick={onDone}>
+        Skip Rest
+      </button>
+    </div>
+  );
+}
+
+// ── WorkoutTracker ────────────────────────────────────────────────────────────
+function WorkoutTracker({ workout, prescription, checkin, exercises, onFinish, onNewDay }) {
+  const defaultRestSeconds = 180; // 3 min default rest
+
+  // Build initial state from prescription
+  const initSets = (ex) => {
+    const sets = ex.sets || 4;
+    const defaultWeight = ex.load ? parseFloat(ex.load) || "" : "";
+    const defaultReps   = ex.reps ? parseInt(ex.reps)   || "" : "";
+    return Array.from({length: sets}, (_, i) => ({
+      id:        i,
+      weight:    defaultWeight,
+      reps:      defaultReps,
+      feel:      null,   // 'easy' | 'good' | 'hard'
+      done:      false,
+      aiSuggest: null,
+      loading:   false,
+    }));
+  };
+
+  const [exStates, setExStates] = useState(() =>
+    prescription.map(ex => ({ ...ex, sets: initSets(ex), expanded: false, allDone: false }))
+  );
+  const [activeExIdx, setActiveExIdx] = useState(0);
+  const [resting, setResting]         = useState(false);
+  const [restSecs, setRestSecs]       = useState(defaultRestSeconds);
+  const [sessionDone, setSessionDone] = useState(false);
+  const [elapsed, setElapsed]         = useState(0);
+
+  // Session timer
+  useEffect(() => {
+    const t = setInterval(() => setElapsed(e => e + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const formatElapsed = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2,'0')}`;
+  };
+
+  const updateSet = (exIdx, setIdx, field, value) => {
+    setExStates(prev => {
+      const next = prev.map((ex, ei) => {
+        if (ei !== exIdx) return ex;
+        const sets = ex.sets.map((s, si) => si === setIdx ? {...s, [field]: value} : s);
+        return {...ex, sets};
+      });
+      return next;
+    });
+  };
+
+  const completeSet = async (exIdx, setIdx) => {
+    const ex      = exStates[exIdx];
+    const set     = ex.sets[setIdx];
+    const readiness = calcReadiness(checkin);
+
+    // Mark done
+    updateSet(exIdx, setIdx, 'done', true);
+
+    // Start rest timer
+    const restTime = ex.type === 'compound' ? 180 : 90;
+    setRestSecs(restTime);
+    setResting(true);
+
+    // If user rated the set, call AI adapt
+    if (set.feel && set.weight && set.reps) {
+      updateSet(exIdx, setIdx, 'loading', true);
+      try {
+        const baseEx = exercises.find(e => e.name === ex.name) || {};
+        const res = await fetch(`${API}/adapt/set`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            exercise:          ex.name,
+            prescribed_weight: parseFloat(ex.load) || 0,
+            prescribed_reps:   parseInt(ex.reps)   || 0,
+            actual_weight:     parseFloat(set.weight),
+            actual_reps:       parseInt(set.reps),
+            feeling:           set.feel,
+            readiness,
+            one_rm:            baseEx.oneRM || 0,
+          })
+        });
+        const data = await res.json();
+        if (!data.error) {
+          updateSet(exIdx, setIdx, 'aiSuggest', data.next_set);
+          // Pre-fill next set with AI suggestion
+          if (setIdx + 1 < ex.sets.length) {
+            if (data.next_weight) updateSet(exIdx, setIdx + 1, 'weight', data.next_weight);
+            if (data.next_reps)   updateSet(exIdx, setIdx + 1, 'reps',   data.next_reps);
+          }
+        }
+      } catch(e) {}
+      updateSet(exIdx, setIdx, 'loading', false);
+    }
+
+    // Check if all sets done for this exercise
+    const allDone = exStates[exIdx].sets.every((s, si) => si === setIdx ? true : s.done);
+    if (allDone) {
+      setExStates(prev => prev.map((ex, ei) => ei === exIdx ? {...ex, allDone: true} : ex));
+      // Move to next exercise
+      if (exIdx + 1 < exStates.length) setActiveExIdx(exIdx + 1);
+      else setSessionDone(true);
+    }
+  };
+
+  if (sessionDone) {
+    const totalSets = exStates.reduce((acc, ex) => acc + ex.sets.filter(s => s.done).length, 0);
+    return (
+      <div className="session-complete">
+        <div className="session-complete-title">SESSION COMPLETE</div>
+        <div className="session-complete-sub" style={{marginBottom:"24px"}}>
+          {workout.toUpperCase()} · {totalSets} SETS · {formatElapsed(elapsed)}
+        </div>
+        <button className="btn btn-primary" onClick={onNewDay}>Done</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="workout-tracker">
+      <div className="tracker-header">
+        <div>
+          <div className="tracker-title">{workout}</div>
+          <div className="tracker-meta">
+            {exStates.filter(e => e.allDone).length}/{exStates.length} exercises · {formatElapsed(elapsed)}
+          </div>
+        </div>
+        <button className="btn btn-secondary" style={{padding:"8px 16px", fontSize:"11px"}} onClick={onNewDay}>
+          End Session
+        </button>
+      </div>
+
+      {resting && (
+        <RestTimer seconds={restSecs} onDone={() => setResting(false)} />
+      )}
+
+      {exStates.map((ex, exIdx) => {
+        const isActive = exIdx === activeExIdx;
+        const isDone   = ex.allDone;
+        const cls      = isDone ? "done" : isActive ? "active" : "";
+
+        return (
+          <div key={ex.name} className={`tracker-exercise ${cls}`}>
+            <div className="tracker-ex-header" onClick={() => setActiveExIdx(exIdx)}>
+              <div>
+                <div className="tracker-ex-name">{ex.name}</div>
+                <div className="tracker-ex-prescribed">
+                  {ex.sets.length} sets × {ex.reps} reps @ {ex.load || "BW"}
+                  {ex.intensity_note && ` — ${ex.intensity_note}`}
+                </div>
+              </div>
+              <div className="tracker-ex-status">
+                {isDone ? "✓ DONE" : isActive ? "ACTIVE" : `${ex.sets.filter(s=>s.done).length}/${ex.sets.length}`}
+              </div>
+            </div>
+
+            {(isActive || isDone) && (
+              <div className="tracker-sets">
+                {ex.sets.map((set, setIdx) => (
+                  <div key={setIdx}>
+                    <div className="set-row">
+                      <div className="set-num">SET {setIdx + 1}</div>
+                      <input className="set-input" type="number" placeholder="lbs"
+                        value={set.weight}
+                        onChange={e => updateSet(exIdx, setIdx, 'weight', e.target.value)} />
+                      <span className="set-divider">×</span>
+                      <input className="set-input" type="number" placeholder="reps"
+                        value={set.reps}
+                        onChange={e => updateSet(exIdx, setIdx, 'reps', e.target.value)} />
+                      <div className="set-feel-btns">
+                        {[["😤","easy"],["✓","good"],["😮‍💨","hard"]].map(([emoji, feel]) => (
+                          <button key={feel}
+                            className={`set-feel-btn ${set.feel === feel ? `selected-${feel}` : ''}`}
+                            onClick={() => updateSet(exIdx, setIdx, 'feel', feel)}
+                            title={feel}>
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        className={`set-done-btn ${set.done ? 'completed' : ''}`}
+                        disabled={set.done || set.loading}
+                        onClick={() => completeSet(exIdx, setIdx)}>
+                        {set.loading ? "AI..." : set.done ? "✓" : "Done"}
+                      </button>
+                    </div>
+                    {set.aiSuggest && (
+                      <div className="ai-adapt-box">
+                        <div className="ai-adapt-label">⬡ AI Adapt</div>
+                        {set.aiSuggest}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <button className="add-set-btn"
+                  onClick={() => setExStates(prev => prev.map((e, ei) =>
+                    ei === exIdx ? {...e, sets: [...e.sets, {id: e.sets.length, weight: ex.sets[ex.sets.length-1]?.weight || "", reps: ex.sets[ex.sets.length-1]?.reps || "", feel: null, done: false, aiSuggest: null, loading: false}]} : e
+                  ))}>
+                  + Add Set
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -762,6 +1059,7 @@ export default function App() {
   const [checkin, setCheckin]                 = useState(null);
   const [workout, setWorkout]                 = useState(null);
   const [exercises, setExes]                  = useState([]);
+  const [prescription, setPrescription]       = useState(null);
   const [serverState, setServerState]         = useState(null);
   const [serverExercises, setServerExercises] = useState(null);
   const [loadingCheckin, setLoadingCheckin]   = useState(true);
@@ -792,9 +1090,10 @@ export default function App() {
 
   const handleCheckin = (data) => { setCheckin(data); setView("workout"); };
   const handleWorkout = (name, exs) => { setWorkout(name); setExes(exs); setView("prescription"); };
+  const handleStartWorkout = (pres) => { setPrescription(pres); setView("train"); };
 
-  const VIEWS  = ["dashboard","checkin","workout","prescription"];
-  const LABELS = ["Dashboard","Check-in","Workout","Prescription"];
+  const VIEWS  = ["dashboard","checkin","workout","prescription","train"];
+  const LABELS = ["Dashboard","Check-in","Workout","Prescription","Train"];
 
   return (
     <>
@@ -826,7 +1125,10 @@ export default function App() {
           </div>
         )}
         {!loadingCheckin && view === "prescription" && checkin && workout && (
-          <Prescription workout={workout} exercises={exercises} checkin={checkin} serverState={serverState} onNewDay={handleNewDay} />
+          <Prescription workout={workout} exercises={exercises} checkin={checkin} serverState={serverState} onNewDay={handleNewDay} onStartWorkout={handleStartWorkout} />
+        )}
+        {!loadingCheckin && view === "train" && checkin && workout && prescription && (
+          <WorkoutTracker workout={workout} prescription={prescription} checkin={checkin} exercises={exercises} onFinish={() => setView("dashboard")} onNewDay={handleNewDay} />
         )}
       </div>
     </>
