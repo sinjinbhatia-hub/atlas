@@ -817,27 +817,72 @@ function Prescription({ workout, exercises, checkin, serverState, onNewDay, onSt
 // ── Rest Timer ───────────────────────────────────────────────────────────────
 function RestTimer({ seconds, onDone }) {
   const [remaining, setRemaining] = useState(seconds);
+  const [paused, setPaused]       = useState(false);
+  const [editing, setEditing]     = useState(false);
+  const [customVal, setCustomVal] = useState("");
 
   useEffect(() => {
-    if (remaining <= 0) { onDone(); return; }
+    if (paused || remaining <= 0) {
+      if (remaining <= 0) onDone();
+      return;
+    }
     const t = setTimeout(() => setRemaining(r => r - 1), 1000);
     return () => clearTimeout(t);
-  }, [remaining]);
+  }, [remaining, paused]);
 
-  const pct = (remaining / seconds) * 100;
+  const pct  = Math.max(0, (remaining / seconds) * 100);
   const mins = Math.floor(remaining / 60);
   const secs = remaining % 60;
 
   return (
     <div className="rest-timer">
       <div className="rest-timer-label">Rest Timer</div>
-      <div className="rest-timer-count">{mins}:{secs.toString().padStart(2,'0')}</div>
+
+      {editing ? (
+        <div style={{display:"flex", alignItems:"center", gap:"8px", justifyContent:"center", margin:"8px 0"}}>
+          <input
+            autoFocus
+            type="number"
+            style={{background:"transparent", border:"1px solid var(--accent)", color:"var(--accent)", fontFamily:"var(--font-display)", fontSize:"36px", width:"100px", textAlign:"center", padding:"4px"}}
+            placeholder="sec"
+            value={customVal}
+            onChange={e => setCustomVal(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter" && customVal > 0) {
+                setRemaining(parseInt(customVal));
+                setEditing(false);
+                setCustomVal("");
+              }
+            }}
+          />
+          <button className="btn btn-secondary" style={{padding:"8px 14px", fontSize:"11px"}}
+            onClick={() => { if (customVal > 0) { setRemaining(parseInt(customVal)); } setEditing(false); setCustomVal(""); }}>
+            Set
+          </button>
+        </div>
+      ) : (
+        <div className="rest-timer-count" onClick={() => { setPaused(true); setEditing(true); }} style={{cursor:"pointer"}} title="Tap to edit">
+          {mins}:{secs.toString().padStart(2,'0')}
+        </div>
+      )}
+
       <div className="rest-timer-bar">
         <div className="rest-timer-fill" style={{width: `${pct}%`}} />
       </div>
-      <button className="btn btn-secondary" style={{marginTop:"12px", padding:"8px 20px", fontSize:"11px"}} onClick={onDone}>
-        Skip Rest
-      </button>
+
+      <div style={{display:"flex", gap:"8px", justifyContent:"center", marginTop:"12px", flexWrap:"wrap"}}>
+        <button className="btn btn-secondary" style={{padding:"6px 12px", fontSize:"11px"}}
+          onClick={() => setRemaining(r => Math.max(0, r - 30))}>−30s</button>
+        <button className="btn btn-secondary" style={{padding:"6px 12px", fontSize:"11px"}}
+          onClick={() => setPaused(p => !p)}>
+          {paused ? "Resume" : "Pause"}
+        </button>
+        <button className="btn btn-secondary" style={{padding:"6px 12px", fontSize:"11px"}}
+          onClick={() => setRemaining(r => r + 30)}>+30s</button>
+        <button className="btn btn-secondary" style={{padding:"6px 12px", fontSize:"11px"}} onClick={onDone}>
+          Skip
+        </button>
+      </div>
     </div>
   );
 }
