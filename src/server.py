@@ -354,7 +354,15 @@ TODAY'S STATUS:
 TODAY'S EXERCISES:
 {chr(10).join(exercise_lines)}
 
-Generate a precise, science-based prescription for this advanced athlete. Be direct — real numbers, not vague ranges unless genuinely warranted. Account for exercise-specific mechanics (pull-ups scale by total bodyweight + added load, skill work uses holds/progressions not % 1RM). If readiness is low, reduce volume but don't eliminate intensity entirely.
+Generate a precise, science-based prescription. Rules:
+- ALWAYS leave 1-2 reps in reserve (RIR). This is an advanced athlete training for longevity, not a max test. Do not prescribe to failure.
+- Readiness 0.75+ (HIGH): Full volume, compounds at 78-85% 1RM, RIR 1-2
+- Readiness 0.5-0.75 (MODERATE): Reduce by 1 set per exercise, 70-78% 1RM, RIR 2-3
+- Readiness below 0.5 (LOW): Cut volume in half, 60-70% 1RM, technique focus, RIR 3+
+- Pull-ups: prescribe as bodyweight + added load (e.g. "+45lbs"), never as % 1RM
+- Skill work (planche, front lever): hold durations and progressions, not load
+- Long levers at 6'2" mean more joint stress on accessories — never push isolation work to failure
+- Be direct with real numbers. Brief rationale per exercise.
 
 Respond ONLY with valid JSON, no other text:
 {{
@@ -403,7 +411,53 @@ Respond ONLY with valid JSON, no other text:
         print(f"AI prescription error: {e}")
         return {"error": str(e)}
 
-class PrescriptionRequest(BaseModel):
+class SetFeedback(BaseModel):
+    exercise:    str
+    prescribed_weight: float
+    prescribed_reps:   int
+    actual_weight:     float
+    actual_reps:       int
+    feeling:     str  # "easy", "on_point", "too_hard"
+    readiness:   float
+    one_rm:      float = 0
+
+@app.post("/adapt/set")
+async def adapt_set(req: SetFeedback):
+    """Given feedback on a completed set, suggest adjustment for next set."""
+    if not ANTHROPIC_API_KEY:
+        return {"error": "No API key configured"}
+
+    prompt = f"""You are a strength coach giving instant feedback during a workout.
+
+Athlete: {USER_PROFILE['name']}, {USER_PROFILE['height']}, {USER_PROFILE['weight']}, advanced lifter
+Exercise: {req.exercise}
+Prescribed: {req.prescribed_weight}lbs x {req.prescribed_reps} reps
+Actual: {req.actual_weight}lbs x {req.actual_reps} reps
+How it felt: {req.feeling}
+Estimated 1RM: {req.one_rm}lbs
+Today's readiness: {req.readiness}
+
+Give a one-line adjustment for their next set. Be direct and specific with a number.
+Examples: "Stay at 225lbs — that's your working weight today." or "Drop to 205lbs, reset, nail the reps." or "Add 10lbs — you have more in the tank."
+
+Respond ONLY with JSON: {{"next_set": "your instruction", "next_weight": 225, "next_reps": 5}}"""
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={"x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                json={"model": "claude-sonnet-4-20250514", "max_tokens": 200, "messages": [{"role": "user", "content": prompt}]}
+            )
+        data = response.json()
+        text = "".join(b.get("text", "") for b in data.get("content", []))
+        clean = text.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
+        return json.loads(clean)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+
     exercises: list
     readiness: float
     soreness:  dict
