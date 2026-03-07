@@ -412,44 +412,59 @@ Respond ONLY with valid JSON, no other text:
         return {"error": str(e)}
 
 class SetFeedback(BaseModel):
-    exercise:    str
+    exercise:          str
     prescribed_weight: float
     prescribed_reps:   int
     actual_weight:     float
     actual_reps:       int
-    feeling:     str  # "easy", "on_point", "too_hard"
-    readiness:   float
-    one_rm:      float = 0
+    feeling:           str
+    rir:               int = 2
+    readiness:         float
+    one_rm:            float = 0
+    set_number:        int = 1
+    total_sets:        int = 4
+    exercise_type:     str = "compound"
 
 @app.post("/adapt/set")
 async def adapt_set(req: SetFeedback):
-    """Given feedback on a completed set, suggest adjustment for next set."""
     if not ANTHROPIC_API_KEY:
         return {"error": "No API key configured"}
 
-    prompt = f"""You are a strength coach giving instant feedback during a workout.
+    prompt = f"""You are a strength coach making a real-time load adjustment during a workout.
 
 Athlete: {USER_PROFILE['name']}, {USER_PROFILE['height']}, {USER_PROFILE['weight']}, advanced lifter
-Exercise: {req.exercise}
-Prescribed: {req.prescribed_weight}lbs x {req.prescribed_reps} reps
-Actual: {req.actual_weight}lbs x {req.actual_reps} reps
-How it felt: {req.feeling}
-Estimated 1RM: {req.one_rm}lbs
-Today's readiness: {req.readiness}
+Active goals: {', '.join(USER_PROFILE['active_goals'])}
+Considerations: {'; '.join(USER_PROFILE['considerations'])}
 
-Give a one-line adjustment for their next set. Be direct and specific with a number.
-Examples: "Stay at 225lbs — that's your working weight today." or "Drop to 205lbs, reset, nail the reps." or "Add 10lbs — you have more in the tank."
+COMPLETED SET:
+- Exercise: {req.exercise} (type: {req.exercise_type})
+- Set {req.set_number} of {req.total_sets}
+- Prescribed: {req.prescribed_weight}lbs × {req.prescribed_reps} reps
+- Actual: {req.actual_weight}lbs × {req.actual_reps} reps
+- Reps In Reserve (RIR): {req.rir} {"(hit failure)" if req.rir == 0 else "(very easy, lots left)" if req.rir >= 4 else ""}
+- Estimated 1RM: {req.one_rm}lbs
+- Today's readiness: {req.readiness}
 
-Respond ONLY with JSON: {{"next_set": "your instruction", "next_weight": 225, "next_reps": 5}}"""
+COACHING RULES:
+- RIR 0 (failure): They went too heavy. Drop weight so next set lands at RIR 2. Be conservative — dropping too little is safer than dropping too much. For compounds: drop 5-10%. For isolation: drop 5-7.5%.
+- RIR 3: Slightly light. Add a small amount only if it's early in the session (sets 1-2). If it's set 3-4, stay at weight — fatigue will reduce RIR naturally.
+- RIR 4+: Clearly too light. Add weight, but conservatively. For compounds: +5-10lbs max. For isolation: +2.5-5lbs max. Never jump more than 10% in one set.
+- Never suggest going to failure intentionally.
+- Account for long levers at 6'2" — more conservative on shoulder and elbow-dominant movements.
+- Be direct and brief. One sentence max.
+
+Respond ONLY with JSON: {{"next_set": "your one-sentence instruction", "next_weight": 225, "next_reps": 5}}"""
 
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             response = await client.post(
                 "https://api.anthropic.com/v1/messages",
                 headers={"x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-                json={"model": "claude-sonnet-4-20250514", "max_tokens": 200, "messages": [{"role": "user", "content": prompt}]}
+                json={"model": "claude-sonnet-4-20250514", "max_tokens": 150, "messages": [{"role": "user", "content": prompt}]}
             )
         data = response.json()
+        if "error" in data:
+            return {"error": data["error"].get("message", str(data["error"]))}
         text = "".join(b.get("text", "") for b in data.get("content", []))
         clean = text.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
         return json.loads(clean)
