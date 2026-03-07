@@ -537,7 +537,25 @@ def prescribe(req: PrescriptionRequest):
 
     return {"phase": phase, "prescriptions": results}
 
-@app.get("/history/sessions")
+@app.get("/debug/exercise/{exercise_name}")
+def debug_exercise(exercise_name: str, days: int = 30):
+    try:
+        conn = get_conn()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cutoff = date.today() - timedelta(days=days)
+        cur.execute("""
+            SELECT date, workout_name, exercise_name, set_order, weight, reps
+            FROM workouts
+            WHERE exercise_name ILIKE %s AND date >= %s
+            ORDER BY date DESC, set_order ASC
+        """, (f"%{exercise_name}%", cutoff))
+        rows = cur.fetchall()
+        conn.close()
+        return {"rows": [dict(r) for r in rows], "count": len(rows)}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def get_sessions(limit: int = 30, offset: int = 0):
     """Get list of workout sessions grouped by date."""
     try:
