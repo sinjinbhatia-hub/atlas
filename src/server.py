@@ -25,9 +25,9 @@ app.add_middleware(
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql://postgres:Iluv2lift2!@db.fqqczbnmjcmgnbhllgmi.supabase.co:5432/postgres"
+    "postgresql://postgres.fqqczbnmjcmgnbhllgmi:Iluv2lift2!@aws-0-us-west-2.pooler.supabase.com:6543/postgres"
 )
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "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")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "PASTE_YOUR_KEY_HERE")
 TAU_FITNESS  = 45
 TAU_FATIGUE  = 7
 EXERCISES_FILE = "exercises.json"
@@ -815,23 +815,77 @@ def prescribe(req: PrescriptionRequest):
     return {"phase": phase, "prescriptions": results}
 
 # ── History ───────────────────────────────────────────────────────────────────
+# ── Workout Logging ───────────────────────────────────────────────────────────
+class WorkoutSet(BaseModel):
+    exercise_name: str
+    set_order:     int
+    weight:        float
+    reps:          int
+    rir:           int = None
+
+class WorkoutLogRequest(BaseModel):
+    workout_name: str
+    sets:         list[WorkoutSet]
+
+@app.post("/workout/log")
+def log_workout(payload: WorkoutLogRequest, authorization: Optional[str] = Header(None)):
+    user_id = get_user_id(authorization)
+    try:
+        conn = get_conn()
+        cur  = conn.cursor()
+        today_date = date.today()
+        # Delete existing sets for today + workout to allow re-logging
+        if user_id:
+            cur.execute("""
+                DELETE FROM workouts
+                WHERE user_id = %s AND date = %s AND workout_name = %s
+            """, (user_id, today_date, payload.workout_name))
+        for s in payload.sets:
+            cur.execute("""
+                INSERT INTO workouts (user_id, date, workout_name, exercise_name, set_order, weight, reps)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (user_id, today_date, payload.workout_name, s.exercise_name, s.set_order, s.weight, s.reps))
+        conn.commit()
+        conn.close()
+        return {"ok": True, "sets_logged": len(payload.sets)}
+    except Exception as e:
+        print(f"DB error in log_workout: {e}")
+        return {"ok": False, "error": str(e)}
+
+# ── History ───────────────────────────────────────────────────────────────────
 @app.get("/history/sessions")
-def get_sessions(limit: int = 20, offset: int = 0):
+def get_sessions(limit: int = 20, offset: int = 0, authorization: Optional[str] = Header(None)):
+    user_id = get_user_id(authorization)
     try:
         conn = get_conn()
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("""
-            SELECT date, workout_name,
-                COUNT(DISTINCT exercise_name) as exercise_count,
-                COUNT(*) as total_sets,
-                SUM(weight * reps) as total_volume
-            FROM workouts
-            GROUP BY date, workout_name
-            ORDER BY date DESC
-            LIMIT %s OFFSET %s
-        """, (limit, offset))
+        if user_id:
+            cur.execute("""
+                SELECT date, workout_name,
+                    COUNT(DISTINCT exercise_name) as exercise_count,
+                    COUNT(*) as total_sets,
+                    SUM(weight * reps) as total_volume
+                FROM workouts WHERE user_id = %s
+                GROUP BY date, workout_name
+                ORDER BY date DESC
+                LIMIT %s OFFSET %s
+            """, (user_id, limit, offset))
+        else:
+            cur.execute("""
+                SELECT date, workout_name,
+                    COUNT(DISTINCT exercise_name) as exercise_count,
+                    COUNT(*) as total_sets,
+                    SUM(weight * reps) as total_volume
+                FROM workouts
+                GROUP BY date, workout_name
+                ORDER BY date DESC
+                LIMIT %s OFFSET %s
+            """, (limit, offset))
         rows = cur.fetchall()
-        cur.execute("SELECT COUNT(DISTINCT date) as total FROM workouts")
+        if user_id:
+            cur.execute("SELECT COUNT(DISTINCT date) as total FROM workouts WHERE user_id = %s", (user_id,))
+        else:
+            cur.execute("SELECT COUNT(DISTINCT date) as total FROM workouts")
         total = cur.fetchone()["total"]
         conn.close()
         return {"sessions": [dict(r) for r in rows], "total": total}
@@ -840,17 +894,27 @@ def get_sessions(limit: int = 20, offset: int = 0):
         return {"sessions": [], "total": 0}
 
 @app.get("/history/session/{session_date}")
-def get_session_detail(session_date: str):
+def get_session_detail(session_date: str, authorization: Optional[str] = Header(None)):
+    user_id = get_user_id(authorization)
     try:
         conn = get_conn()
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("""
-            SELECT exercise_name, set_order, weight, reps,
-                   weight * (1 + reps / 30.0) as estimated_1rm
-            FROM workouts
-            WHERE date = %s AND weight > 0 AND reps > 0
-            ORDER BY exercise_name, set_order
-        """, (session_date,))
+        if user_id:
+            cur.execute("""
+                SELECT exercise_name, set_order, weight, reps,
+                       weight * (1 + reps / 30.0) as estimated_1rm
+                FROM workouts
+                WHERE date = %s AND user_id = %s AND weight > 0 AND reps > 0
+                ORDER BY exercise_name, set_order
+            """, (session_date, user_id))
+        else:
+            cur.execute("""
+                SELECT exercise_name, set_order, weight, reps,
+                       weight * (1 + reps / 30.0) as estimated_1rm
+                FROM workouts
+                WHERE date = %s AND weight > 0 AND reps > 0
+                ORDER BY exercise_name, set_order
+            """, (session_date,))
         rows = cur.fetchall()
         conn.close()
         exercises = {}
@@ -865,21 +929,32 @@ def get_session_detail(session_date: str):
         return {"date": session_date, "exercises": {}}
 
 @app.get("/history/exercise/{exercise_name}")
-def get_exercise_history(exercise_name: str, days: int = 365):
+def get_exercise_history(exercise_name: str, days: int = 365, authorization: Optional[str] = Header(None)):
+    user_id = get_user_id(authorization)
     try:
         conn = get_conn()
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cutoff = date.today() - timedelta(days=days)
-        cur.execute("""
-            SELECT date,
-                MAX(weight * (1 + reps / 30.0)) as estimated_1rm,
-                MAX(weight) as max_weight,
-                (array_agg(reps ORDER BY (weight * (1 + reps/30.0)) DESC))[1] as max_reps
-            FROM workouts
-            WHERE exercise_name = %s AND weight > 0 AND reps > 0 AND date >= %s
-            GROUP BY date
-            ORDER BY date ASC
-        """, (exercise_name, cutoff))
+        if user_id:
+            cur.execute("""
+                SELECT date,
+                    MAX(weight * (1 + reps / 30.0)) as estimated_1rm,
+                    MAX(weight) as max_weight,
+                    (array_agg(reps ORDER BY (weight * (1 + reps/30.0)) DESC))[1] as max_reps
+                FROM workouts
+                WHERE exercise_name = %s AND user_id = %s AND weight > 0 AND reps > 0 AND date >= %s
+                GROUP BY date ORDER BY date ASC
+            """, (exercise_name, user_id, cutoff))
+        else:
+            cur.execute("""
+                SELECT date,
+                    MAX(weight * (1 + reps / 30.0)) as estimated_1rm,
+                    MAX(weight) as max_weight,
+                    (array_agg(reps ORDER BY (weight * (1 + reps/30.0)) DESC))[1] as max_reps
+                FROM workouts
+                WHERE exercise_name = %s AND weight > 0 AND reps > 0 AND date >= %s
+                GROUP BY date ORDER BY date ASC
+            """, (exercise_name, cutoff))
         rows = cur.fetchall()
         conn.close()
         return {"exercise": exercise_name, "history": [dict(r) for r in rows]}
