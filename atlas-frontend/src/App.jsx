@@ -466,17 +466,17 @@ function Dashboard({ checkin, onNav, serverState }) {
       <div className="stats-grid">
         <div className="stat-card blue">
           <div className="stat-label">Fitness Score</div>
-          <div className="stat-value">{fitness ? (fitness/1000).toFixed(1)+'K' : '—'}</div>
+          <div className="stat-value">{fitness !== null ? (fitness/1000).toFixed(1)+'K' : '—'}</div>
           <div className="stat-sub">long-term adaptation</div>
         </div>
         <div className="stat-card purple">
           <div className="stat-label">Fatigue Score</div>
-          <div className="stat-value">{fatigue ? (fatigue/1000).toFixed(1)+'K' : '—'}</div>
+          <div className="stat-value">{fatigue !== null ? (fatigue/1000).toFixed(1)+'K' : '—'}</div>
           <div className="stat-sub">short-term stress</div>
         </div>
         <div className="stat-card green">
           <div className="stat-label">Performance</div>
-          <div className="stat-value">{performance ? (performance/1000).toFixed(1)+'K' : '—'}</div>
+          <div className="stat-value">{performance !== null ? (performance/1000).toFixed(1)+'K' : '—'}</div>
           <div className="stat-sub">fitness − fatigue</div>
         </div>
         <div className="stat-card yellow">
@@ -1536,7 +1536,7 @@ export default function App() {
   const [loadingCheckin, setLoadingCheckin]   = useState(true);
 
   const loadData = async () => {
-    fetch(`${API}/state`).then(r => r.json()).then(setServerState).catch(() => {});
+    getAuthHeaders().then(headers => fetch(`${API}/state`, { headers })).then(r => r.json()).then(setServerState).catch(() => {});
     fetch(`${API}/exercises`).then(r => r.json()).then(setServerExercises).catch(() => {});
     getAuthHeaders().then(headers => fetch(`${API}/checkin/today`, { headers })).then(r => r.json()).then(data => {
       if (data.exists) setCheckin(serverToLocalCheckin(data.data));
