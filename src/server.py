@@ -514,6 +514,21 @@ def debug():
         result["banister_error"] = str(e)
     return result
 
+@app.get("/debug/state")
+def debug_state(authorization: Optional[str] = Header(None)):
+    user_id = get_user_id(authorization)
+    try:
+        conn = get_conn()
+        cur  = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM workouts WHERE weight::float > 0 AND reps::int > 0 AND user_id = %s", (user_id,))
+        count_user = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM workouts WHERE weight::float > 0 AND reps::int > 0")
+        count_all = cur.fetchone()[0]
+        conn.close()
+        return {"user_id": str(user_id), "rows_for_user": count_user, "rows_total": count_all}
+    except Exception as e:
+        return {"error": str(e), "user_id": str(user_id)}
+
 @app.get("/debug/exercise/{exercise_name}")
 def debug_exercise(exercise_name: str, days: int = 30):
     try:
