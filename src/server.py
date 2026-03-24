@@ -315,19 +315,28 @@ def compute_banister(user_id=None):
         cur  = conn.cursor()
         if user_id:
             cur.execute("""
-                SELECT date, exercise_name, weight, reps
-                FROM workouts WHERE weight > 0 AND reps > 0 AND user_id = %s ORDER BY date
+                SELECT date, exercise_name,
+                       weight::float, reps::int
+                FROM workouts
+                WHERE weight IS NOT NULL AND reps IS NOT NULL
+                  AND weight::float > 0 AND reps::int > 0
+                  AND user_id = %s
+                ORDER BY date
             """, (user_id,))
         else:
             cur.execute("""
-                SELECT date, exercise_name, weight, reps
-                FROM workouts WHERE weight > 0 AND reps > 0 ORDER BY date
+                SELECT date, exercise_name,
+                       weight::float, reps::int
+                FROM workouts
+                WHERE weight IS NOT NULL AND reps IS NOT NULL
+                  AND weight::float > 0 AND reps::int > 0
+                ORDER BY date
             """)
         rows = cur.fetchall()
         conn.close()
     except Exception as e:
         print(f"DB error in compute_banister: {e}")
-        return 0, 0, []
+        raise RuntimeError(f"compute_banister query failed: {e}") from e
 
     if not rows:
         return 0, 0, []
@@ -335,6 +344,12 @@ def compute_banister(user_id=None):
     import pandas as pd
     df = pd.DataFrame(rows, columns=['date','exercise_name','weight','reps'])
     df['date'] = pd.to_datetime(df['date'])
+    df['weight'] = pd.to_numeric(df['weight'], errors='coerce')
+    df['reps']   = pd.to_numeric(df['reps'],   errors='coerce')
+    df = df.dropna(subset=['weight', 'reps'])
+    df = df[(df['weight'] > 0) & (df['reps'] > 0)]
+    if df.empty:
+        return 0, 0, []
     df['estimated_1rm'] = df['weight'] * (1 + df['reps'] / 30)
     df = df.sort_values('date')
     df['max_1rm'] = df.groupby('exercise_name')['estimated_1rm'].cummax()
@@ -471,15 +486,33 @@ def debug_env():
 
 @app.get("/debug")
 def debug():
+    result = {"db_url_prefix": DATABASE_URL[:40]}
     try:
         conn = get_conn()
         cur  = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM workouts")
-        count = cur.fetchone()[0]
+        result["workout_rows_total"] = cur.fetchone()[0]
+        cur.execute("""
+            SELECT COUNT(*) FROM workouts
+            WHERE weight IS NOT NULL AND reps IS NOT NULL
+              AND weight::float > 0 AND reps::int > 0
+        """)
+        result["workout_rows_filterable"] = cur.fetchone()[0]
+        cur.execute("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'workouts' ORDER BY ordinal_position")
+        result["workouts_schema"] = [{"col": r[0], "type": r[1]} for r in cur.fetchall()]
         conn.close()
-        return {"db_connected": True, "workout_rows": count, "db_url_prefix": DATABASE_URL[:40]}
+        result["db_connected"] = True
     except Exception as e:
-        return {"db_connected": False, "error": str(e), "db_url_prefix": DATABASE_URL[:40]}
+        result["db_connected"] = False
+        result["error"] = str(e)
+    try:
+        fitness, fatigue, history = compute_banister()
+        result["banister_fitness"]  = round(fitness, 1)
+        result["banister_fatigue"]  = round(fatigue, 1)
+        result["banister_history_days"] = len(history)
+    except Exception as e:
+        result["banister_error"] = str(e)
+    return result
 
 @app.get("/debug/exercise/{exercise_name}")
 def debug_exercise(exercise_name: str, days: int = 30):
