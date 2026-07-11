@@ -47,10 +47,13 @@ The backend handles:
 
 **Backend:**
 ```bash
-cd src
 pip install -r requirements.txt
-DATABASE_URL=... ANTHROPIC_API_KEY=... uvicorn server:app --reload
+# copy .env.example to .env and fill in your keys
+cd src
+uvicorn server:app --reload
 ```
+
+Required environment variables (see [.env.example](.env.example)): `SUPABASE_URL` (Postgres connection string), `SUPABASE_JWT_SECRET`, `ANTHROPIC_API_KEY`.
 
 **Frontend:**
 ```bash
@@ -58,6 +61,13 @@ cd atlas-frontend
 npm install
 npm run dev
 ```
+
+## Screenshots
+
+<!-- TODO(sinjin): drop screenshots into docs/screenshots/ and they'll render here -->
+| Dashboard | Workout | Check-in |
+|---|---|---|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Workout](docs/screenshots/workout.png) | ![Check-in](docs/screenshots/checkin.png) |
 
 ## Roadmap
 
@@ -71,3 +81,7 @@ npm run dev
 ## Background
 
 Built as an independent project exploring the intersection of strength training science, LLM-based coaching, and mobile product development.
+
+## License
+
+[MIT](LICENSE)

@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+.venv/
+
+# Node
+node_modules/
+dist/
+.next/
+
+# Secrets
+.env.local
+.env.production
+*.pem
+
+# Personal training data — keep out of the public repo
+checkins.csv
+strong_workouts.csv
+detected_split.json
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Migration scripts
+migrate.py
+
+# Internal working docs
+ATLAS_MOBILE_APP_BUILDER_PROMPT.md
