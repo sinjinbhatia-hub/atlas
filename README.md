@@ -1,12 +1,10 @@
-# Atlas — AI Strength Coach
+# BeeFit — AI Strength Coach
 
-A full-stack AI-powered strength coaching app built for the App Store.
+A full-stack AI-powered strength coaching app. My first major AI-assisted build; no longer deployed.
 
 ## Overview
 
-Atlas is a personalized training platform that uses machine learning and coaching science to prescribe workouts, adapt training in real-time, and track long-term athletic development.
-
-**Live:** [atlas-zeta-six.vercel.app](https://atlas-zeta-six.vercel.app)
+BeeFit is a personalized training platform that uses machine learning and coaching science to prescribe workouts, adapt training in real-time, and track long-term athletic development.
 
 ## Features
 
@@ -23,8 +21,8 @@ Atlas is a personalized training platform that uses machine learning and coachin
 
 | Layer | Tech |
 |-------|------|
-| Frontend | React + Vite, deployed on Vercel |
-| Backend | FastAPI (Python), deployed on Railway |
+| Frontend | React + Vite |
+| Backend | FastAPI (Python) |
 | Database | PostgreSQL on Supabase with RLS |
 | Auth | Supabase Auth (email + Apple Sign In planned) |
 | AI | Anthropic Claude (claude-sonnet-4) |
